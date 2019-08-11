@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:orientation="horizontal" >
+
+    <LinearLayout
+        android:id="@+id/camera_preview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical" />
+    <TextView
+        android:id="@+id/counterTxt"
+        android:textColor="#FFFFFF"
+        android:textSize="20sp"
+        android:layout_marginTop="50dp"
+        android:layout_centerHorizontal="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+    <LinearLayout
+        android:id="@+id/buttonsLayout"
+        android:layout_alignParentBottom="true"
+        android:background="@color/colorAccent"
+        android:layout_width="match_parent"
+        android:layout_height="270dp"
+        android:orientation="horizontal" >
+
+        <Button
+            android:id="@+id/button_ChangeCamera"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="3dp"
+            android:text="Switch" />
+
+        <Button
+            android:id="@+id/btnHold"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="3dp"
+            android:text="Rekam" />
+
+        <Button
+            android:id="@+id/btnMerge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="3dp"
+            android:text="Merge" />
+
+        <Button
+            android:id="@+id/btnTakePhoto"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="3dp"
+            android:text="TAKE" />
+    </LinearLayout>
+
+</RelativeLayout>
