@@ -11,7 +11,7 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.SystemClock;
-import android.support.v7.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -41,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
     private int VIDEO_QUALITY = CamcorderProfile.QUALITY_1080P;
     private int VIDEO_MAX_DURATION = 600000; // Set max duration 60 sec
     private int VIDEO_MAX_SIZE = 10000000; // Set max file size 10MB
-    private Camera mCameraVideo;
+    private Camera camera;
     private HqqCameraPreview hqqCameraPreview;
     private MediaRecorder mediaRecorder;
     private Button btnHold;
@@ -135,14 +135,14 @@ public class MainActivity extends AppCompatActivity {
             toast.show();
             finish();
         }
-        if (mCameraVideo == null) {
+        if (camera == null) {
             // if the front facing camera does not exist
             if (findFrontFacingCamera() < 0) {
                 Toast.makeText(this, "No front facing camera found.", Toast.LENGTH_LONG).show();
                 switchCamera.setVisibility(View.GONE);
             }
-            mCameraVideo = Camera.open(findBackFacingCamera());
-            hqqCameraPreview.refreshCamera(mCameraVideo);
+            camera = Camera.open(findBackFacingCamera());
+            hqqCameraPreview.refreshCamera(camera);
         }
     }
 
@@ -194,14 +194,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void initAction() {
         if (hqqCameraPreview == null)
-            hqqCameraPreview = new HqqCameraPreview(myContext, mCameraVideo);
+            hqqCameraPreview = new HqqCameraPreview(myContext, camera);
         layoutCameraPreview.addView(hqqCameraPreview);
 
         btnTakePhoto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (mCameraVideo != null){
-                    mCameraVideo.takePicture(shutterCallback, pictureCallbackRaw, new Camera.PictureCallback() {
+                if (camera != null){
+                    camera.takePicture(shutterCallback, pictureCallbackRaw, new Camera.PictureCallback() {
                         @Override
                         public void onPictureTaken(byte[] bytes, Camera camera) {
                             Bitmap bitmapPicture = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
@@ -272,9 +272,9 @@ public class MainActivity extends AppCompatActivity {
                 // set a picture callback
                 // refresh the preview
 
-                mCameraVideo = Camera.open(cameraId);
+                camera = Camera.open(cameraId);
                 // mPicture = getPictureCallback();
-                hqqCameraPreview.refreshCamera(mCameraVideo);
+                hqqCameraPreview.refreshCamera(camera);
             }
         } else {
             int cameraId = findFrontFacingCamera();
@@ -283,9 +283,9 @@ public class MainActivity extends AppCompatActivity {
                 // set a picture callback
                 // refresh the preview
 
-                mCameraVideo = Camera.open(cameraId);
+                camera = Camera.open(cameraId);
                 // mPicture = getPictureCallback();
-                hqqCameraPreview.refreshCamera(mCameraVideo);
+                hqqCameraPreview.refreshCamera(camera);
             }
         }
     }
@@ -347,7 +347,7 @@ public class MainActivity extends AppCompatActivity {
             mediaRecorder.reset(); // clear recorder configuration
             mediaRecorder.release(); // release the recorder object
             mediaRecorder = null;
-            mCameraVideo.lock(); // lock camera for later use
+            camera.lock(); // lock camera for later use
         }
     }
 
@@ -355,8 +355,8 @@ public class MainActivity extends AppCompatActivity {
 
         mediaRecorder = new MediaRecorder();
 
-        mCameraVideo.unlock();
-        mediaRecorder.setCamera(mCameraVideo);
+        camera.unlock();
+        mediaRecorder.setCamera(camera);
 
         mediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
         mediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
@@ -384,9 +384,9 @@ public class MainActivity extends AppCompatActivity {
 
     private void releaseCamera() {
         // stop and release camera
-        if (mCameraVideo != null) {
-            mCameraVideo.release();
-            mCameraVideo = null;
+        if (camera != null) {
+            camera.release();
+            camera = null;
         }
     }
 
