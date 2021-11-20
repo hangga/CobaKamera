@@ -1,90 +1,78 @@
 package com.mingkem.paijo.cobakamera;
 
+import android.Manifest;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.hardware.Camera;
-import android.media.CamcorderProfile;
-import android.media.MediaRecorder;
 import android.os.Bundle;
-import android.os.CountDownTimer;
-import android.os.Handler;
-import android.os.SystemClock;
-import androidx.appcompat.app.AppCompatActivity;
-import android.util.Log;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
-
-import com.coremedia.iso.boxes.Container;
-import com.googlecode.mp4parser.authoring.Movie;
-import com.googlecode.mp4parser.authoring.Track;
-import com.googlecode.mp4parser.authoring.builder.DefaultMp4Builder;
-import com.googlecode.mp4parser.authoring.container.mp4.MovieCreator;
-import com.googlecode.mp4parser.authoring.tracks.AppendTrack;
-
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.channels.FileChannel;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 public class MainActivity extends AppCompatActivity {
 
-    List<String> listVideo = new ArrayList<>();
+    private static final int REQUEST_CODE = 1234;
+    private final String[] REQUIRED_PERMISSIONS = {
+            android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.CAMERA
+    };
+
+    void requestPermission() {
+        ActivityCompat.requestPermissions(MainActivity.this, REQUIRED_PERMISSIONS, REQUEST_CODE);
+    }
+
+    public boolean verifyPermissions() {
+        boolean isGranted = true;
+        for (String permission : REQUIRED_PERMISSIONS) {
+            if (ContextCompat.checkSelfPermission(this.getApplicationContext(),
+                    permission) != PackageManager.PERMISSION_GRANTED) {
+                isGranted = false;
+                break;
+            }
+        }
+        return isGranted;
+    }
+
+    //List<String> listVideo = new ArrayList<>();
     boolean isCapturingVideo = false;
-    private int VIDEO_QUALITY = CamcorderProfile.QUALITY_1080P;
-    private int VIDEO_MAX_DURATION = 600000; // Set max duration 60 sec
-    private int VIDEO_MAX_SIZE = 10000000; // Set max file size 10MB
+    Camera.ShutterCallback shutterCallback = new Camera.ShutterCallback() {
+
+        public void onShutter() {
+            // TODO Auto-generated method stub
+        }
+    };
+    Camera.PictureCallback pictureCallbackRaw = new Camera.PictureCallback() {
+
+        public void onPictureTaken(byte[] arg0, Camera arg1) {
+            // TODO Auto-generated method stub
+        }
+    };
+    Camera.PictureCallback pictureCallbackJpg = new Camera.PictureCallback() {
+
+        public void onPictureTaken(byte[] arg0, Camera arg1) {
+            // TODO Auto-generated method stub
+            Bitmap bitmapPicture = BitmapFactory.decodeByteArray(arg0, 0, arg0.length);
+            Bitmap correctBmp = Bitmap.createBitmap(bitmapPicture, 0, 0, bitmapPicture.getWidth(), bitmapPicture.getHeight(), null, true);
+        }
+    };
+
     private Camera camera;
     private HqqCameraPreview hqqCameraPreview;
-    private MediaRecorder mediaRecorder;
-    private Button btnHold;
+    //private MediaRecorder mediaRecorder;
     private Button switchCamera;
-    private Button btnMerge;
     private Button btnTakePhoto;
     private Context myContext;
-    private TextView counterTxt;
-    private int counterDown = 60;
+
+
     private LinearLayout layoutCameraPreview;
     private boolean cameraFront = false;
-    private CountDownTimer countDownTimer = new CountDownTimer(60000, 1000) {
-        @Override
-        public void onTick(long l) {
-            counterTxt.setText("00:".concat(String.valueOf(counterDown)));
-            counterDown--;
-            if (counterDown == 0){
-                stopRecord();
-            }
-        }
-
-        @Override
-        public void onFinish() {
-            //stopRecord();
-        }
-    };
-    private Handler mHandler = new Handler();
-    private int counter = 0;
-
-    private Runnable mHoldButtonRun = new Runnable() {
-        public void run() {
-            counter++;
-            mHandler.postAtTime(this, SystemClock.uptimeMillis() + 100);
-            if (counter > 1) {
-                if (!isCapturingVideo) {
-                    startRecord();
-                    btnHold.setText("Merekam");
-                    countDownTimer.start();
-                    isCapturingVideo = true;
-                }
-            }
-        }
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,7 +82,7 @@ public class MainActivity extends AppCompatActivity {
         initialize();
     }
 
-    private int findFrontFacingCamera() {
+    private int getFacingFront() {
         int cameraId = -1;
         // Search for the front facing camera
         int numberOfCameras = Camera.getNumberOfCameras();
@@ -110,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
         return cameraId;
     }
 
-    private int findBackFacingCamera() {
+    private int getFacingBack() {
         int cameraId = -1;
         // Search for the back facing camera
         // get the number of cameras
@@ -128,68 +116,50 @@ public class MainActivity extends AppCompatActivity {
         return cameraId;
     }
 
-    public void onResume() {
-        super.onResume();
-        if (!hasCamera(myContext)) {
-            Toast toast = Toast.makeText(myContext, "Sorry, your phone does not have a camera!", Toast.LENGTH_LONG);
-            toast.show();
-            finish();
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == REQUEST_CODE) {
+            if (verifyPermissions()) {
+                startPreview();
+            } else {
+                requestPermission();
+            }
         }
+    }
+
+    void startPreview(){
         if (camera == null) {
             // if the front facing camera does not exist
-            if (findFrontFacingCamera() < 0) {
+            if (getFacingFront() < 0) {
                 Toast.makeText(this, "No front facing camera found.", Toast.LENGTH_LONG).show();
                 switchCamera.setVisibility(View.GONE);
             }
-            camera = Camera.open(findBackFacingCamera());
+            camera = Camera.open(getFacingBack());
             hqqCameraPreview.refreshCamera(camera);
         }
     }
 
-    private boolean mergeMediaFiles(boolean isAudio/*, String sourceFiles[],String targetFile*/) {
-        try {
-            String mediaKey = isAudio ? "soun" : "vide";
-            List<Movie> listMovies = new ArrayList<>();
-
-            for (int i = 0; i < listVideo.size(); i++) {
-                listMovies.add(MovieCreator.build(listVideo.get(i)));
-            }
-
-            List<Track> listTracks = new LinkedList<>();
-            for (Movie movie : listMovies) {
-                for (Track track : movie.getTracks()) {
-                    if (track.getHandler().equals(mediaKey)) {
-                        listTracks.add(track);
-                    }
-                }
-            }
-            Movie outputMovie = new Movie();
-            if (!listTracks.isEmpty()) {
-                outputMovie.addTrack(new AppendTrack(listTracks.toArray(new Track[listTracks.size()])));
-            }
-
-            String targetFile = "/sdcard/merge-hqq".concat(String.valueOf(System.currentTimeMillis())).concat(".mp4");
-
-            Container container = new DefaultMp4Builder().build(outputMovie);
-            FileChannel fileChannel = new RandomAccessFile(String.format(targetFile), "rw").getChannel();
-            container.writeContainer(fileChannel);
-            fileChannel.close();
-            Toast.makeText(myContext, "Merged -> " + targetFile, Toast.LENGTH_LONG).show();
-            return true;
-        } catch (IOException e) {
-            Log.e("TES", "Error merging media files. exception: " + e.getMessage());
-            return false;
+    public void onResume() {
+        super.onResume();
+        /*if (!hasCamera(myContext)) {
+            Toast toast = Toast.makeText(myContext, "Sorry, your phone does not have a camera!", Toast.LENGTH_LONG);
+            toast.show();
+            finish();
+        }*/
+        if (verifyPermissions()){
+            startPreview();
+        } else {
+            requestPermission();
         }
     }
 
-    private void initElement() {
+    private void initViews() {
         // init element
-        btnHold = findViewById(R.id.btnHold);
-        btnMerge = findViewById(R.id.btnMerge);
         layoutCameraPreview = findViewById(R.id.camera_preview);
         switchCamera = findViewById(R.id.button_ChangeCamera);
-        counterTxt = findViewById(R.id.counterTxt);
-        btnTakePhoto =  findViewById(R.id.btnTakePhoto);
+        btnTakePhoto = findViewById(R.id.btnTakePhoto);
     }
 
     private void initAction() {
@@ -200,7 +170,7 @@ public class MainActivity extends AppCompatActivity {
         btnTakePhoto.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (camera != null){
+                if (camera != null) {
                     camera.takePicture(shutterCallback, pictureCallbackRaw, new Camera.PictureCallback() {
                         @Override
                         public void onPictureTaken(byte[] bytes, Camera camera) {
@@ -230,43 +200,17 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
-
-        btnHold.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View view, MotionEvent motionEvent) {
-                int action = motionEvent.getAction();
-                if (action == MotionEvent.ACTION_DOWN) {
-                    mHandler.removeCallbacks(mHoldButtonRun);
-                    mHandler.postAtTime(mHoldButtonRun,
-                            SystemClock.uptimeMillis() + 50);
-                } else if (action == MotionEvent.ACTION_UP) {
-                    mHandler.removeCallbacks(mHoldButtonRun);
-                    if (isCapturingVideo) {
-                        countDownTimer.cancel();
-                        stopRecord();
-                    }
-                }
-                return false;
-            }
-        });
-
-        btnMerge.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                mergeMediaFiles(false);
-            }
-        });
     }
 
     public void initialize() {
-        initElement();
+        initViews();
         initAction();
     }
 
     public void chooseCamera() {
         // if the camera preview is the front
         if (cameraFront) {
-            int cameraId = findBackFacingCamera();
+            int cameraId = getFacingBack();
             if (cameraId >= 0) {
                 // open the backFacingCamera
                 // set a picture callback
@@ -277,7 +221,7 @@ public class MainActivity extends AppCompatActivity {
                 hqqCameraPreview.refreshCamera(camera);
             }
         } else {
-            int cameraId = findFrontFacingCamera();
+            int cameraId = getFacingFront();
             if (cameraId >= 0) {
                 // open the backFacingCamera
                 // set a picture callback
@@ -300,86 +244,7 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean hasCamera(Context context) {
         // check if the device has camera
-        if (context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA)) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    private void startRecord() {
-        if (isCapturingVideo) return;
-
-        if (!prepareMediaRecorder()) {
-            Toast.makeText(MainActivity.this, "Fail in prepareMediaRecorder()!\n - Ended -", Toast.LENGTH_LONG).show();
-            finish();
-        }
-
-        // work on UiThread for better performance
-        runOnUiThread(new Runnable() {
-            public void run() {
-                // If there are stories, add them to the table
-                try {
-                    mediaRecorder.start();
-                    Toast.makeText(MainActivity.this, "Mulai merekam", Toast.LENGTH_LONG).show();
-                } catch (final Exception ex) {
-                    // Log.i("---","Exception in thread");
-                }
-            }
-        });
-
-        isCapturingVideo = true;
-    }
-
-    private void stopRecord() {
-        if (isCapturingVideo) {
-            // stop isCapturingVideo and release camera
-            mediaRecorder.stop(); // stop the isCapturingVideo
-            releaseMediaRecorder(); // release the MediaRecorder object
-            btnHold.setText("Rekam");
-            Toast.makeText(MainActivity.this, "Video captured!", Toast.LENGTH_LONG).show();
-            isCapturingVideo = false;
-        }
-    }
-
-    private void releaseMediaRecorder() {
-        if (mediaRecorder != null) {
-            mediaRecorder.reset(); // clear recorder configuration
-            mediaRecorder.release(); // release the recorder object
-            mediaRecorder = null;
-            camera.lock(); // lock camera for later use
-        }
-    }
-
-    private boolean prepareMediaRecorder() {
-
-        mediaRecorder = new MediaRecorder();
-
-        camera.unlock();
-        mediaRecorder.setCamera(camera);
-
-        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
-        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
-
-        mediaRecorder.setProfile(CamcorderProfile.get(VIDEO_QUALITY));
-
-        String fileName = "/sdcard/hqq".concat(String.valueOf(System.currentTimeMillis())).concat(".mp4");
-        mediaRecorder.setOutputFile(fileName);
-        listVideo.add(fileName);
-        mediaRecorder.setMaxDuration(VIDEO_MAX_DURATION);
-        mediaRecorder.setMaxFileSize(VIDEO_MAX_SIZE);
-
-        try {
-            mediaRecorder.prepare();
-        } catch (IllegalStateException e) {
-            releaseMediaRecorder();
-            return false;
-        } catch (IOException e) {
-            releaseMediaRecorder();
-            return false;
-        }
-        return true;
-
+        return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA);
     }
 
     private void releaseCamera() {
@@ -389,27 +254,4 @@ public class MainActivity extends AppCompatActivity {
             camera = null;
         }
     }
-
-    Camera.ShutterCallback shutterCallback = new Camera.ShutterCallback(){
-
-        public void onShutter() {
-            // TODO Auto-generated method stub
-        }
-    };
-
-    Camera.PictureCallback pictureCallbackRaw = new Camera.PictureCallback(){
-
-        public void onPictureTaken(byte[] arg0, Camera arg1) {
-            // TODO Auto-generated method stub
-        }
-    };
-
-    Camera.PictureCallback pictureCallbackJpg = new Camera.PictureCallback(){
-
-        public void onPictureTaken(byte[] arg0, Camera arg1) {
-            // TODO Auto-generated method stub
-            Bitmap bitmapPicture = BitmapFactory.decodeByteArray(arg0, 0, arg0.length);
-            Bitmap correctBmp = Bitmap.createBitmap(bitmapPicture, 0, 0, bitmapPicture.getWidth(), bitmapPicture.getHeight(), null, true);
-        }
-    };
 }
